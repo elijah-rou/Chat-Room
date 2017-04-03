@@ -17,7 +17,13 @@ public class ChatServer {
 
     public static void main(String[] args){
         //default port number
-        int portNumber = 1995;
+
+		/*
+		ELI
+		changed port number to accomodate server
+		*/
+        int portNumber = 5000;
+
         //open a server socket on the portnumber
         try{
             serverSocket = new ServerSocket(portNumber);
