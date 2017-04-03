@@ -7,23 +7,25 @@ import sys
 
 def query():
     "Query client"
-    sys.stdout.write("|YOU> ")
+    sys.stdout.write("\n|YOU> ")
     sys.stdout.flush()
 
 
-def send_receive(socket, client):
+def send_receive(socket, server):
     # receiving a message
-    if socket == client:
+    if socket == server:
         data = socket.recv(4096)
         if not data:
             print("Disconnected")
             sys.exit()
         else:
-            sys.stdout.write(data)
+            sys.stdout.write(data.decode('utf-8'))
             query()
     else:
         msg = sys.stdin.readline()
-        client.send(msg.encode('utf-8'))
+        if msg == ":q":
+            sys.exit(0)
+        server.send(("\033[1m" + msg + "\033[0;0m").encode('utf-8'))
         query()
 
 
@@ -34,6 +36,7 @@ if __name__ == "__main__":
 
     ip = sys.argv[1]
     port = int(sys.argv[2])
+    name = sys.argv[3]
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
 
@@ -45,7 +48,8 @@ if __name__ == "__main__":
         sys.exit()
 
     # Connected!
-    print("Connected to " + ip)
+    print("\nConnected to " + ip + " as " + name + "\n")
+    
     query()
 
     # broadcast loop

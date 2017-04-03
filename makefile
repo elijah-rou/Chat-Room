@@ -22,8 +22,11 @@ java-client:
 py-server:
 	$(P) $(PY_SRC)/chatServer.py
 
-py-client:
-	$(P) $(PY_SRC)/chatClient.py
+py-local:
+	$(P) $(PY_SRC)/chatClient.py localhost 5000
+
+py-remote:
+	$(P) $(PY_SRC)/chatClient.py 41.79.76.36 5000
 
 clean:
 	rm bin/*.class

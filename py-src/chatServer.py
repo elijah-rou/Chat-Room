@@ -6,40 +6,24 @@ import select
 CONNECTIONS = []
 
 
-def send_message(sock, current_socket, server_socket, message):
+def send_message(conn, current_socket, server_socket, message):
     "Send a message to a destination socket"
-    if sock != server_socket and sock != current_socket:
+    print("ATTEMPTING TO SEND")
+    if conn != server_socket and conn != current_socket:
         try:
-            sock.send(message)
+            print("Sending: " + message + "to " + str(conn.getsockname()))
+            conn.send(message.encode('utf-8'))
         except Exception:
-            sock.close()
-            CONNECTIONS.remove(current_socket)
+            print("Failed: " + str(conn.getsockname()))
+            conn.close()
+            CONNECTIONS.remove(conn)
 
 
 def broadcast(current_socket, server_socket, message):
     "Send message to all connnections"
+    # print("Broadcast: " + message)
     for conn in CONNECTIONS:
         send_message(conn, current_socket, server_socket, message)
-
-
-def send_receive(current_socket, server_socket, buff):
-    "Accept new connections or send messages"
-    s, address = server_socket.accept()
-    if current_socket == server_socket:
-        # new connection
-        CONNECTIONS.append(s)
-        print("(%s, %s) is connected" % address)
-        broadcast(s, server_socket, "[%s:%s] entered\n" % address)
-    else:
-        # A client sent a message
-        try:
-            msg = current_socket.recv(buff)
-            if msg:
-                broadcast(current_socket, "\r" + "|" + str(current_socket.getpeername()) + "> " + msg.decode('utf-8'))
-        except Exception:
-            broadcast(current_socket, "Client (%s, %s) offline" % address)
-            current_socket.close()
-            CONNECTIONS.remove(current_socket)
 
 
 if __name__ == "__main__":
@@ -61,9 +45,26 @@ if __name__ == "__main__":
     while(True):
         # get sockets to be read (Read, Write, Error)
         r_sock, w_sock, e_sock = select.select(CONNECTIONS, [], [])
+        print(r_sock)
         for k in r_sock:
-            send_receive(k, server_socket, BUFFER)
-        continue
+            "Accept new connections or send messages"
+            if k == server_socket:
+                # new connection
+                s, address = server_socket.accept()
+                CONNECTIONS.append(s)
+                print("(%s, %s) is connected" % address)
+                broadcast(s, server_socket, "[%s:%s] entered\n" % address)
+            else:
+                # A client sent a message
+                try:
+                    msg = k.recv(BUFFER)
+                    if msg:
+                        broadcast(k, server_socket, "\r" + "|" + str(k.getpeername()) + "> " + msg.decode('utf-8'))
+                except Exception:
+                    broadcast(k, server_socket, "Client (%s, %s) offline" % address)
+                    k.close("Client (%s, %s) offline" % address)
+                    CONNECTIONS.remove(k)
+                    continue
     server_socket.close()
 
 
