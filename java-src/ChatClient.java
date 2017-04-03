@@ -11,7 +11,7 @@ public class ChatClient implements Runnable {
     //client socket
     private static Socket clientSocket = null;
     //output stream
-    private static PrintStream outputStream=null;
+    private static PrintStream textOutStream=null;
     //input stream
     private static DataInputStream inputStream = null;
 
@@ -20,7 +20,7 @@ public class ChatClient implements Runnable {
 
     public static void main(String[] args){
         //default port
-        int portNumber = 1995;
+        int portNumber = 5000;
         //default host
         String hostname="localhost";
 
@@ -39,7 +39,13 @@ public class ChatClient implements Runnable {
 
             inputLine = new BufferedReader(new InputStreamReader(System.in));
             //opening output stream...
-            outputStream = new PrintStream(clientSocket.getOutputStream());
+            /*
+            ELI
+            Seperated output and input streams into seperate
+            objects order to be able to send pictures
+            */
+            outputStream = clientSocket.getOutputStream()
+            textOutStream = new PrintStream(outputStream);
             //opening input stream...
             inputStream = new DataInputStream(clientSocket.getInputStream());
         }
@@ -48,16 +54,16 @@ public class ChatClient implements Runnable {
             System.out.println(e);
         }
 
-        if(clientSocket !=null && outputStream != null && inputStream !=null) //to ensure everything has been initialized
+        if(clientSocket !=null && textOutStream != null && inputStream !=null) //to ensure everything has been initialized
         {
             try{
                 //create thread that will read from the server
                 new Thread(new ChatClient()).start();
                 while(!closed){
-                    outputStream.println(inputLine.readLine().trim());
+                    textOutStream.println(inputLine.readLine().trim());
                 }
                 //when closed == true
-                outputStream.close();//close output stream
+                textOutStream.close();//close output stream
                 inputStream.close();//close input stream
                 clientSocket.close();//close the socket
             }
