@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.PrintStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.IOException;
 import java.net.*;
 
@@ -11,7 +12,8 @@ public class ChatClient implements Runnable {
     //client socket
     private static Socket clientSocket = null;
     //output stream
-    private static PrintStream textOutStream=null;
+    private static OutputStream outputStream = null;
+    private static PrintStream textOutStream = null;
     //input stream
     private static DataInputStream inputStream = null;
 
@@ -44,7 +46,7 @@ public class ChatClient implements Runnable {
             Seperated output and input streams into seperate
             objects order to be able to send pictures
             */
-            outputStream = clientSocket.getOutputStream()
+            outputStream = clientSocket.getOutputStream();
             textOutStream = new PrintStream(outputStream);
             //opening input stream...
             inputStream = new DataInputStream(clientSocket.getInputStream());
@@ -59,8 +61,30 @@ public class ChatClient implements Runnable {
             try{
                 //create thread that will read from the server
                 new Thread(new ChatClient()).start();
+
+                /*
+                ELI
+                Added a shutdown hook to send server notice of termination
+                if forced closed
+                */
+                Runtime.getRuntime().addShutdownHook(new Thread(){
+                            public void run(){
+                                textOutStream.println("#Exit");
+                            }
+                        });
+                // end
                 while(!closed){
-                    textOutStream.println(inputLine.readLine().trim());
+                    /*
+                    ELI
+                    Added check here to remove reliance on server
+                    to quit
+                    */
+                    String s = inputLine.readLine().trim();
+                    textOutStream.println(s);
+                    if (s.equals("#Exit")) {
+                        System.exit(0);
+                    }
+                    //end
                 }
                 //when closed == true
                 textOutStream.close();//close output stream
@@ -76,17 +100,26 @@ public class ChatClient implements Runnable {
 
     //creating thread that will read from the server
     public void run()
-    {
+    {   
+        /* REDONE
         //want to keep reading from the socket until the greeting message from the server is received
         //once the greeting message received, want to end.
+           REDONE
+        */
         String reply;
         try{
             while((reply=inputStream.readLine()) != null){
                 System.out.println(reply);
+                /*
+                ELI
+                Unadvised to do this, need to remove reliance on server for 
+                termination
+                
                 if(reply.contains("# Goodbye"))
                 {
                     break;
                 }
+                */
             }
             closed = true;
         }
