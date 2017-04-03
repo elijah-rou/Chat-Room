@@ -3,36 +3,39 @@
 import socket
 import select
 
+CONNECTIONS = []
 
-def send_message(dest_socket, current_socket, message):
+
+def send_message(sock, current_socket, server_socket, message):
     "Send a message to a destination socket"
-    if dest_socket != server_socket and dest_socket != current_socket:
+    if sock != server_socket and sock != current_socket:
         try:
-            current_socket.send(message)
+            sock.send(message)
         except Exception:
-            current_socket.close()
+            sock.close()
             CONNECTIONS.remove(current_socket)
 
 
-def broadcast(current_socket, message):
+def broadcast(current_socket, server_socket, message):
     "Send message to all connnections"
-    map(lambda x: send_message(x, current_socket, message), CONNECTIONS)
+    for conn in CONNECTIONS:
+        send_message(conn, current_socket, server_socket, message)
 
 
 def send_receive(current_socket, server_socket, buff):
     "Accept new connections or send messages"
+    s, address = server_socket.accept()
     if current_socket == server_socket:
         # new connection
-        current_socket, address = server_socket.accept()
-        CONNECTIONS.append(current_socket)
+        CONNECTIONS.append(s)
         print("(%s, %s) is connected" % address)
-        broadcast(current_socket, "[%s:%s] entered\n" % address)
+        broadcast(s, server_socket, "[%s:%s] entered\n" % address)
     else:
         # A client sent a message
         try:
             msg = current_socket.recv(buff)
             if msg:
-                broadcast(current_socket, "\r" + "|" + str(current_socket.getpeername()) + "| " + msg)
+                broadcast(current_socket, "\r" + "|" + str(current_socket.getpeername()) + "> " + msg.decode('utf-8'))
         except Exception:
             broadcast(current_socket, "Client (%s, %s) offline" % address)
             current_socket.close()
@@ -40,12 +43,12 @@ def send_receive(current_socket, server_socket, buff):
 
 
 if __name__ == "__main__":
-    CONNECTIONS = []
     BUFFER = 4096
     PORT = 5000
 
     # obtain server socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind(("0.0.0.0", PORT))
     server_socket.listen(10)
 
@@ -58,7 +61,9 @@ if __name__ == "__main__":
     while(True):
         # get sockets to be read (Read, Write, Error)
         r_sock, w_sock, e_sock = select.select(CONNECTIONS, [], [])
-        map(lambda x: send_receive(x, server_socket, BUFFER))
+        for k in r_sock:
+            send_receive(k, server_socket, BUFFER)
+        continue
     server_socket.close()
 
 

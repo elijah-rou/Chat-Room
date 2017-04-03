@@ -7,23 +7,23 @@ import sys
 
 def query():
     "Query client"
-    sys.stdout.write("|YOU| ")
+    sys.stdout.write("|YOU> ")
     sys.stdout.flush()
 
 
 def send_receive(socket, client):
     # receiving a message
     if socket == client:
-        msg = socket.recv(4096)
-        if not msg:
+        data = socket.recv(4096)
+        if not data:
             print("Disconnected")
             sys.exit()
         else:
-            sys.stdout.write(msg)
+            sys.stdout.write(data)
             query()
     else:
         msg = sys.stdin.readline()
-        client.send(msg)
+        client.send(msg.encode('utf-8'))
         query()
 
 
@@ -35,11 +35,11 @@ if __name__ == "__main__":
     ip = sys.argv[1]
     port = int(sys.argv[2])
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    socket.setdefaulttimeout(2)
+    sock.settimeout(2)
 
     # attempt connection else quit program
     try:
-        socket.connect((ip, port))
+        sock.connect((ip, port))
     except Exception:
         print("Connection failed")
         sys.exit()
@@ -54,5 +54,6 @@ if __name__ == "__main__":
 
         # get readable sockets
         r_sock, w_sock, e_sock = select.select(sockets, [], [])
-        map(lambda x: send_receive(x, sock), r_sock)
+        for s in r_sock:
+            send_receive(s, sock)
 
