@@ -139,15 +139,38 @@ class clientThread extends Thread{
 					break;
 				}
 				//broadcast message to the chatroom
-				synchronized(this)
-				{
-					System.out.println("Broadcast: " + line + ", From: " + name + "@" + clientSocket.getRemoteSocketAddress());
-					for(int i=0;i<maxNumClients;i++)
+				if (line.startsWith("@")) {
+					//split the persons name from the actual msg
+					String[] msg = line.split(">", 2);
+					msg[0] += ">";
+					System.out.println(msg[0] + ", " + msg[1]);
+					if (msg.length > 1 && msg[1] != null)//check that it actually contains a msg
 					{
-						if(threads[i]!=null && threads[i].clientName != null && !(threads[i].clientName.equals("@"+name)))
-						{
-							threads[i].outputStream.println(name+": "+line);
-						}	
+						msg[1] = msg[1].trim();
+						if (!msg[1].isEmpty()) {
+							synchronized (this) {
+								for (int i = 0; i < maxNumClients; i++) {
+									if (threads[i] != null && threads[i] != this && threads[i].clientName != null
+											&& threads[i].clientName.equals(msg[0])) {
+										threads[i].outputStream.println("\033[1mFrom " + name + ":\033[0;0m " + msg[1]);
+										this.outputStream.println("\033[1mTo " + msg[0].substring(1) + ":\033[0;0m " + msg[1]);
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+				else {
+					synchronized (this) {
+						System.out.println(
+								"Broadcast: " + line + ", From: " + name + "@" + clientSocket.getRemoteSocketAddress());
+						for (int i = 0; i < maxNumClients; i++) {
+							if (threads[i] != null && threads[i].clientName != null
+									&& !(threads[i].clientName.equals("@" + name))) {
+								threads[i].outputStream.println(name + ": " + line);
+							}
+						}
 					}
 				}
 			}
