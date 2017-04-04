@@ -21,6 +21,10 @@ public class ChatClient implements Runnable {
     private static boolean closed = false;
 
     public static void main(String[] args){
+
+        // clear whole screen
+        clear();
+
         //default port
         int portNumber = 5000;
         //default host
@@ -73,15 +77,30 @@ public class ChatClient implements Runnable {
                             }
                         });
                 // end
+
+                /*
+                ELI
+                Made more neat by clearing screen 
+                after user enters name
+                */
+                String s = inputLine.readLine().trim();
+                textOutStream.println(s);
+                clear();
                 while(!closed){
                     /*
                     ELI
                     Added check here to remove reliance on server
                     to quit
                     */
-                    String s = inputLine.readLine().trim();
+                    s = inputLine.readLine().trim();
+
+                    // want to clear screen here
+                    //System.out.print("\033[H\033[2J");  
+                    //System.out.flush();  
+                    
                     textOutStream.println(s);
                     if (s.equals("#Exit")) {
+                        clear();
                         System.exit(0);
                     }
                     //end
@@ -127,6 +146,16 @@ public class ChatClient implements Runnable {
         {
             System.out.println(e);
         }
+    }
+
+    /*
+    Eli Methods
+    */
+
+    private static void clear(){
+        // clears the whole screen
+        System.out.print("\033[H\033[2J");  
+        System.out.flush();  
     }
 }
 
