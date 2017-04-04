@@ -22,17 +22,19 @@ public class ChatServer {
 		ELI
 		changed port number to accomodate server
 		*/
-        int portNumber = 5000;
+        int port = 5000;
 
-        //open a server socket on the portnumber
+        //open a server socket on the port
         try{
-            serverSocket = new ServerSocket(portNumber);
+            serverSocket = new ServerSocket(port);
         }
         catch(IOException e)
         {
             System.out.println(e);
         }
-
+		System.out.print("\033[H\033[2J");  
+        System.out.flush();
+		System.out.println("Server started on " + serverSocket.getLocalSocketAddress().toString());
         //create a client socket for each connection & pass it to a new client thread
         while(true){
             try{
@@ -47,7 +49,7 @@ public class ChatServer {
                 }
                 if(i==maxNumClients){
                     PrintStream outputStream=new PrintStream(clientSocket.getOutputStream());
-                    outputStream.println("Server to busy");
+                    outputStream.println("Server too busy");
                     outputStream.close();
                     clientSocket.close();
                 }
@@ -66,6 +68,7 @@ public class ChatServer {
 //will inform chat room when the particular client leaves
 class clientThread extends Thread{
 	private String clientName = null;
+	private String address = null;
 	private DataInputStream inputStream = null;
 	private PrintStream outputStream = null;
 	private Socket clientSocket = null;
@@ -92,16 +95,22 @@ class clientThread extends Thread{
 			outputStream = new PrintStream(clientSocket.getOutputStream());
 			String name;
 			//promt chat client for his/her name
-			outputStream.println("Enter your name:");
+			//REMOVED //outputStream.println("Enter your name:");
 			//assign the name
 			name = inputStream.readLine().trim();
-			name =name + "<" + clientSocket.getPort() + ">";
-			
+			address = clientSocket.getRemoteSocketAddress().toString();
+			name = name + "<" + address.substring(1,4) + ":" + clientSocket.getPort() + ">";
+			// added client name here
+			clientName = "@"+name;
+			System.out.print(address);
+			System.out.println(" connected as: " + name);
 			//welcome chat client to the room
-			outputStream.println("Welcome "+name+" to the chat room.\nTo leave type #Exit in a seperate line.");
+			outputStream.println("Welcome "+name+" to the chat room.\nTo leave type #Exit in a seperate line.\n");
 
 			synchronized(this)
 			{
+				// not needed
+				/*
 				for(int i=0;i<maxNumClients;i++)
 				{
 					if(threads[i]!=null && threads[i]==this)
@@ -111,6 +120,7 @@ class clientThread extends Thread{
 						break;
 					}
 				}
+				*/
 				for(int i=0;i<maxNumClients;i++)
 				{
 					if(threads[i]!=null && threads[i]!=this && threads[i].clientName !=null)
@@ -131,10 +141,10 @@ class clientThread extends Thread{
 				//broadcast message to the chatroom
 				synchronized(this)
 				{
-					System.out.println("Broadcast: " + line + ", From: " + name);
+					System.out.println("Broadcast: " + line + ", From: " + name + "@" + clientSocket.getRemoteSocketAddress());
 					for(int i=0;i<maxNumClients;i++)
 					{
-						if(threads[i]!=null && threads[i].clientName != null)
+						if(threads[i]!=null && threads[i].clientName != null && !(threads[i].clientName.equals("@"+name)))
 						{
 							threads[i].outputStream.println(name+": "+line);
 						}	

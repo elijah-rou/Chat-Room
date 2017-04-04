@@ -10,7 +10,7 @@ import java.net.*;
 
 public class ChatClient implements Runnable {
     //client socket
-    private static Socket clientSocket = null;
+    private static Socket serverSocket = null;
     //output stream
     private static OutputStream outputStream = null;
     private static PrintStream textOutStream = null;
@@ -26,7 +26,7 @@ public class ChatClient implements Runnable {
         clear();
 
         //default port
-        int portNumber = 5000;
+        int port = 5000;
         //default host
         String hostname="localhost";
 
@@ -34,14 +34,14 @@ public class ChatClient implements Runnable {
         if(args.length == 2)
         {
             hostname = args[0];
-            portNumber = Integer.parseInt(args[1]);
+            port = Integer.parseInt(args[1]);
         }
 
         //open a socket on the host and port
         //open input and output stream
         try{
             //creating socket...
-            clientSocket = new Socket(hostname, portNumber);
+            serverSocket = new Socket(hostname, port);
 
             inputLine = new BufferedReader(new InputStreamReader(System.in));
             //opening output stream...
@@ -50,20 +50,25 @@ public class ChatClient implements Runnable {
             Seperated output and input streams into seperate
             objects order to be able to send pictures
             */
-            outputStream = clientSocket.getOutputStream();
+            outputStream = serverSocket.getOutputStream();
             textOutStream = new PrintStream(outputStream);
             //opening input stream...
-            inputStream = new DataInputStream(clientSocket.getInputStream());
+            inputStream = new DataInputStream(serverSocket.getInputStream());
         }
         catch(IOException e)
         {
             System.out.println(e);
+            System.exit(0);
         }
 
-        if(clientSocket !=null && textOutStream != null && inputStream !=null) //to ensure everything has been initialized
+        if(serverSocket !=null && textOutStream != null && inputStream !=null) //to ensure everything has been initialized
         {
             try{
                 //create thread that will read from the server
+                System.out.println("Enter your name");
+                String s = inputLine.readLine().trim();
+                clear();
+                System.out.println("\nConnected to " + hostname + ":" + port + " as " + s + "\n");
                 new Thread(new ChatClient()).start();
 
                 /*
@@ -75,7 +80,7 @@ public class ChatClient implements Runnable {
                             public void run(){
                                 textOutStream.println("#Exit");
                             }
-                        });
+                });
                 // end
 
                 /*
@@ -83,15 +88,14 @@ public class ChatClient implements Runnable {
                 Made more neat by clearing screen 
                 after user enters name
                 */
-                String s = inputLine.readLine().trim();
                 textOutStream.println(s);
-                clear();
                 while(!closed){
                     /*
                     ELI
                     Added check here to remove reliance on server
                     to quit
                     */
+                    //query();
                     s = inputLine.readLine().trim();
 
                     // want to clear screen here
@@ -108,7 +112,7 @@ public class ChatClient implements Runnable {
                 //when closed == true
                 textOutStream.close();//close output stream
                 inputStream.close();//close input stream
-                clientSocket.close();//close the socket
+                serverSocket.close();//close the socket
             }
             catch(IOException e)
             {
@@ -152,10 +156,21 @@ public class ChatClient implements Runnable {
     Eli Methods
     */
 
+    private static void sendImage(String path){
+        // send an image to the server
+        
+    }
+
     private static void clear(){
         // clears the whole screen
         System.out.print("\033[H\033[2J");  
         System.out.flush();  
+    }
+
+    private static void query(){
+        // query client for message
+        System.out.print("\n|YOU> ");
+        System.out.flush();
     }
 }
 
