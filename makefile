@@ -23,10 +23,10 @@ py-server:
 	$(P) $(PY_SRC)/chatServer.py
 
 py-local:
-	$(P) $(PY_SRC)/chatClient.py localhost 5000
+	$(P) $(PY_SRC)/chatClient.py localhost 5000 $(name)
 
 py-remote:
-	$(P) $(PY_SRC)/chatClient.py 41.79.76.36 5000
+	$(P) $(PY_SRC)/chatClient.py 41.79.76.36 5000 $(name)
 
 clean:
 	rm bin/*.class

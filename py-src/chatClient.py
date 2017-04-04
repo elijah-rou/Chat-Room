@@ -29,9 +29,16 @@ def send_receive(socket, server):
         query()
 
 
+def clear():
+        # clears the whole screen
+        print("\033[H\033[2J")
+        sys.stdout.flush()
+
+
 if __name__ == "__main__":
-    if(len(sys.argv) != 3):
-        print("Error: incorrect arguments (-> host ip, port no.)")
+    clear()
+    if(len(sys.argv) != 4):
+        print("Error: incorrect arguments (-> host ip, port no., name)")
         sys.exit()
 
     ip = sys.argv[1]
@@ -49,7 +56,6 @@ if __name__ == "__main__":
 
     # Connected!
     print("\nConnected to " + ip + " as " + name + "\n")
-    
     query()
 
     # broadcast loop
