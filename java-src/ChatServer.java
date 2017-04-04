@@ -86,90 +86,92 @@ class clientThread extends Thread{
 
 		try{
 
-		//create input stream for this client
-		inputStream = new DataInputStream(clientSocket.getInputStream());
-		//create ouput stream for this client
-		outputStream = new PrintStream(clientSocket.getOutputStream());
-		String name;
+			//create input stream for this client
+			inputStream = new DataInputStream(clientSocket.getInputStream());
+			//create ouput stream for this client
+			outputStream = new PrintStream(clientSocket.getOutputStream());
+			String name;
 			//promt chat client for his/her name
 			outputStream.println("Enter your name:");
 			//assign the name
-			name=inputStream.readLine().trim();
-		
-		
-		//welcome chat client to the room
-		outputStream.println("Welcome "+name+" to the chat room.\nTo leave type #Exit in a seperate line.");
-		synchronized(this)
-		{
-			for(int i=0;i<maxNumClients;i++)
-			{
-				if(threads[i]!=null && threads[i]==this)
-				{
-					//name to be displayed as in room
-					clientName = "@"+name;
-					break;
-				}
-			}
-			for(int i=0;i<maxNumClients;i++)
-			{
-				if(threads[i]!=null && threads[i]!=this && threads[i].clientName !=null)
-				{
-					threads[i].outputStream.println("--- "+name+" entered the chat room. ---");
-				}
-			}
-		}//sync
-		
-		//start the conversation
-		while(true)
-		{
-			String line=inputStream.readLine();
-			if(line.startsWith("#Exit"))
-			{
-				break;
-			}
-			//broadcast message to the chatroom
+			name = inputStream.readLine().trim();
+			name =name + "<" + clientSocket.getPort() + ">";
+			
+			//welcome chat client to the room
+			outputStream.println("Welcome "+name+" to the chat room.\nTo leave type #Exit in a seperate line.");
+
 			synchronized(this)
 			{
 				for(int i=0;i<maxNumClients;i++)
 				{
-					if(threads[i]!=null && threads[i].clientName != null)
+					if(threads[i]!=null && threads[i]==this)
 					{
-						threads[i].outputStream.println(name+": "+line);
-					}	
+						//name to be displayed as in room
+						clientName = "@"+name;
+						break;
+					}
 				}
-			}
-		}
-		//when a chat client leaves
-		synchronized(this)
-		{
-			for(int i=0;i<maxNumClients;i++)
-			{
-				if(threads[i]!=null && threads[i]!= this && threads[i].clientName !=null)
+				for(int i=0;i<maxNumClients;i++)
 				{
-					threads[i].outputStream.println("--- "+name+" has left the chat room.---");
+					if(threads[i]!=null && threads[i]!=this && threads[i].clientName !=null)
+					{
+						threads[i].outputStream.println("--- "+name+" entered the chat room. ---");
+					}
+				}
+			}//sync
+			
+			//start the conversation
+			while(true)
+			{
+				String line=inputStream.readLine();
+				if(line.startsWith("#Exit"))
+				{
+					break;
+				}
+				//broadcast message to the chatroom
+				synchronized(this)
+				{
+					System.out.println("Broadcast: " + line + ", From: " + name);
+					for(int i=0;i<maxNumClients;i++)
+					{
+						if(threads[i]!=null && threads[i].clientName != null)
+						{
+							threads[i].outputStream.println(name+": "+line);
+						}	
+					}
 				}
 			}
-		}
-		outputStream.println("--- Goodbye "+name+" ---");
+			//when a chat client leaves
+			synchronized(this)
+			{
+				for(int i=0;i<maxNumClients;i++)
+				{
+					if(threads[i]!=null && threads[i]!= this && threads[i].clientName !=null)
+					{
+						threads[i].outputStream.println("--- "+name+" has left the chat room.---");
+					}
+				}
+			}
+			outputStream.println("--- Goodbye "+name+" ---");
 
-		//set current thread to null so new client can be accepted by server
-		synchronized(this)
-		{
-			for(int i=0;i<maxNumClients;i++)
+			//set current thread to null so new client can be accepted by server
+			synchronized(this)
 			{
-				if(threads[i]==this)
+				for(int i=0;i<maxNumClients;i++)
 				{
-					threads[i]=null;
+					if(threads[i]==this)
+					{
+						threads[i]=null;
+					}
 				}
 			}
-		}
-		
-		//close input stream
-		inputStream.close();
-		//close ouput stream
-		outputStream.close();
-		//close the socket
-		clientSocket.close();
+			
+			//close input stream
+			inputStream.close();
+			//close ouput stream
+			outputStream.close();
+			//close the socket
+			clientSocket.close();
 		}catch(IOException e)
 		{
 		System.out.println(e);
