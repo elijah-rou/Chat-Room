@@ -143,8 +143,7 @@ class clientThread extends Thread{
 					//split the persons name from the actual msg
 					String[] msg = line.split(">", 2);
 					msg[0] += ">";
-					System.out.println(msg[0] + ", " + msg[1]);
-					if (msg.length > 1 && msg[1] != null)//check that it actually contains a msg
+					if (msg.length >= 1 && msg[1] != null)//check that it actually contains a msg
 					{
 						msg[1] = msg[1].trim();
 						if (!msg[1].isEmpty()) {
@@ -152,13 +151,20 @@ class clientThread extends Thread{
 								for (int i = 0; i < maxNumClients; i++) {
 									if (threads[i] != null && threads[i] != this && threads[i].clientName != null
 											&& threads[i].clientName.equals(msg[0])) {
+										System.out.println(name + " to " + msg[0] + ": " + msg[1]);
 										threads[i].outputStream.println("\033[1mFrom " + name + ":\033[0;0m " + msg[1]);
 										this.outputStream.println("\033[1mTo " + msg[0].substring(1) + ":\033[0;0m " + msg[1]);
 										break;
 									}
+									if(i==maxNumClients-1){
+										this.outputStream.println("User \033[1m" + msg[0].substring(1) + "\033[0;0m doesn't exist");
+									}
 								}
 							}
 						}
+					}
+					else{
+						this.outputStream.println("\033[1mNo message!\033[0;0m");
 					}
 				}
 				else {
