@@ -138,6 +138,7 @@ public class ChatClient implements Runnable {
                         System.out.println("Reading " + s);
                         try{
                             final String path = s;
+                            textOutStream.println(s);
                             new Thread(){
                                 public void run(){
                                     sendImage(path);
@@ -147,6 +148,7 @@ public class ChatClient implements Runnable {
                         catch(Exception e){
                             System.out.println(e);
                         }
+                        continue;
 
                     }
                     textOutStream.println(s);
@@ -209,6 +211,7 @@ public class ChatClient implements Runnable {
             picOutStream.write(length);
             picOutStream.write(bstream.toByteArray());
             picOutStream.flush();
+            System.out.println(path + " sent!");
         }
         catch(Exception e){
 

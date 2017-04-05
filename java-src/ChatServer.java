@@ -1,19 +1,37 @@
 
 
 import java.io.DataInputStream;
+import java.io.InputStream;
 import java.io.PrintStream;
+import java.io.File;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import javax.imageio.stream.FileCacheImageInputStream;
+import java.util.ArrayList;
+import javax.imageio.ImageIO;
 import java.net.*;
+import java.nio.ByteBuffer;
+import java.awt.image.BufferedImage;
 
 public class ChatServer {
-    //server socket
+    //server socket for text
     private static ServerSocket serverSocket = null;
+	//server socket for pictures
+	private static ServerSocket pictureSocket =  null;
     //client socket
     private static Socket clientSocket = null;
+	private static Socket clientPicSocket = null;
 
     //this chat server can accept up to 5 connections
-    private static final int maxNumClients = 5;
+    static final int maxNumClients = 5;
     private static final clientThread[] threads = new clientThread[maxNumClients];
+
+	static ImageHandler ih = null;
+
+
 
     public static void main(String[] args){
         //default port number
@@ -23,10 +41,12 @@ public class ChatServer {
 		changed port number to accomodate server
 		*/
         int port = 5000;
+		int picPort = 5001;
 
         //open a server socket on the port
         try{
             serverSocket = new ServerSocket(port);
+			pictureSocket = new ServerSocket(picPort);
         }
         catch(IOException e)
         {
@@ -36,14 +56,20 @@ public class ChatServer {
         System.out.flush();
 		System.out.println("Server started on " + serverSocket.getLocalSocketAddress().toString());
         //create a client socket for each connection & pass it to a new client thread
+		ImageHandler ih = new ImageHandler();
+		ih.start();
         while(true){
             try{
                 clientSocket = serverSocket.accept();
+				clientPicSocket = pictureSocket.accept();
                 int i=0;
                 for(i=0;i<maxNumClients;i++){
                     if(threads[i]==null) {
+						System.out.println("\nConnecting...");
                         threads[i] = new clientThread(clientSocket, threads);
+						System.out.println("Text Socket: " + clientSocket.getRemoteSocketAddress());
                         threads[i].start();
+						ih.addSocket(new Tuple<InputStream, Socket>(clientPicSocket.getInputStream(), clientPicSocket), i);
                         break;
                     }
                 }
@@ -56,6 +82,12 @@ public class ChatServer {
             }catch(IOException e){
                 System.out.println(e);
             }
+			try{
+				
+			}
+			catch(Exception e){
+				System.out.println(e);
+			}
         }
     }
 }
@@ -99,8 +131,11 @@ class clientThread extends Thread{
 			//assign the name
 			name = inputStream.readLine().trim();
 			address = clientSocket.getRemoteSocketAddress().toString();
-			name = name + "<" + address.substring(1,4) + ":" + clientSocket.getPort() + ">";
+
+			// TEMPORARILY TAKEN OUT
+			//name = name + "<" + address.substring(1,4) + ":" + clientSocket.getPort() + ">";
 			// added client name here
+
 			clientName = "@"+name;
 			System.out.print(address);
 			System.out.println(" connected as: " + name);
@@ -169,6 +204,13 @@ class clientThread extends Thread{
 				}
 				else {
 					synchronized (this) {
+						//System.out.println(line.substring(4));
+						//System.out.println(line.substring(line.length()-4));
+						if(line.length() > 7 && line.substring(0, 4).equals("img/") && line.substring(line.length()-4).equals(".jpg")){
+							line = line.substring(4);
+							ImageHandler.imgName = line;
+						}
+						//System.out.println(ImageHandler.imgName);
 						System.out.println(
 								"Broadcast: " + line + ", From: " + name + "@" + clientSocket.getRemoteSocketAddress());
 						for (int i = 0; i < maxNumClients; i++) {
@@ -201,6 +243,7 @@ class clientThread extends Thread{
 					if(threads[i]==this)
 					{
 						threads[i]=null;
+						ChatServer.ih.removeSocket(i);
 					}
 				}
 			}
@@ -217,3 +260,64 @@ class clientThread extends Thread{
 		}
 	}
 }
+
+class ImageHandler extends Thread{
+	private InputStream inputStream = null;
+	private OutputStream outputStream = null;
+	private Tuple<InputStream, Socket>[] clients = null;
+	static volatile String imgName = "default.jpg";
+
+
+	public ImageHandler(){
+		clients = new Tuple[ChatServer.maxNumClients];
+		System.out.println(clients.length + " clients permitted.");
+	}
+
+	public void addSocket(Tuple<InputStream, Socket> s, int arrayPos){
+		System.out.println("Media Socket: " + s.getY().getRemoteSocketAddress() + "\n");
+		clients[arrayPos] = s;
+	}
+
+	public void removeSocket(int arrayPos){
+		clients[arrayPos] = null;
+	}
+	
+	
+	public void run(){
+		while(true){
+			//Socket socket = pictureSocket.accept();
+			//inputStream = socket.getInputStream();
+
+			for(Tuple<InputStream, Socket> k : clients){
+				if(k != null){
+					try{
+						//System.out.println("Attempting to write");
+						synchronized(this){
+							FileCacheImageInputStream in = new FileCacheImageInputStream(k.getX(), new File("cache/"));
+							//System.out.println("Reading: " + System.currentTimeMillis());
+
+							byte[] sizeAr = new byte[4];
+							in.read(sizeAr);
+							int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
+
+							byte[] imageAr = new byte[size];
+							in.read(imageAr);
+
+							BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
+
+							System.out.println("Received " + image.getHeight() + "x" + image.getWidth() + ": " + System.currentTimeMillis());
+							ImageIO.write(image, "jpg", new File("server-img/" + imgName));
+							in.flush();
+							in.close();
+						}
+					}
+					catch(Exception e){
+						System.out.println(e);
+					}
+				}
+			}
+		}
+	}
+	
+}
+
