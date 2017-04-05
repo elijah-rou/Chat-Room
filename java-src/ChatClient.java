@@ -1,20 +1,30 @@
 
 
 import java.io.DataInputStream;
+import java.io.InputStream;
+import java.io.File;
+import javax.imageio.ImageIO;
 import java.io.PrintStream;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.IOException;
 import java.net.*;
+import java.nio.ByteBuffer;
 
 public class ChatClient implements Runnable {
     //client socket
     private static Socket serverSocket = null;
+    private static Socket pictureSocket = null;
     //output stream
     private static OutputStream outputStream = null;
+    private static OutputStream picOutStream = null;
+    private static ByteArrayOutputStream bstream = null;
     private static PrintStream textOutStream = null;
     //input stream
+    private static InputStream picInStream = null;
     private static DataInputStream inputStream = null;
 
     private static BufferedReader inputLine = null;
@@ -27,6 +37,7 @@ public class ChatClient implements Runnable {
 
         //default port
         int port = 5000;
+        int picPort = 5001;
         //default host
         String hostname="localhost";
 
@@ -42,6 +53,7 @@ public class ChatClient implements Runnable {
         try{
             //creating socket...
             serverSocket = new Socket(hostname, port);
+            pictureSocket = new Socket(hostname, picPort);
 
             inputLine = new BufferedReader(new InputStreamReader(System.in));
             //opening output stream...
@@ -52,8 +64,13 @@ public class ChatClient implements Runnable {
             */
             outputStream = serverSocket.getOutputStream();
             textOutStream = new PrintStream(outputStream);
+
+            picOutStream = pictureSocket.getOutputStream();
+            bstream = new ByteArrayOutputStream();
             //opening input stream...
             inputStream = new DataInputStream(serverSocket.getInputStream());
+            picInStream = new DataInputStream(pictureSocket.getInputStream());
+
         }
         catch(IOException e)
         {
@@ -70,6 +87,8 @@ public class ChatClient implements Runnable {
                 clear();
                 System.out.println("\nConnected to " + hostname + ":" + port + " as " + s + "\n");
                 new Thread(new ChatClient()).start();
+                // sepearate thread for receiving images
+                //new Thread(new ImageReceiver()).start();
 
                 /*
                 ELI
@@ -102,13 +121,38 @@ public class ChatClient implements Runnable {
                     //System.out.print("\033[H\033[2J");  
                     //System.out.flush();  
                     
-                    textOutStream.println(s);
                     if (s.equals("#Exit")) {
                         clear();
+                        textOutStream.println(s);
                         System.exit(0);
                     }
+                    // user wants to send a picture
+                    else if (s.equals("#P")){
+                        System.out.println("Please specify a file to send (in the img/ folder, #q to cancel)");
+                        s = inputLine.readLine().trim();
+                        if(s.equals("#q")){
+                            System.out.println("Image transfer cancelled");
+                            continue;
+                        }
+                        s = "img/" + s;
+                        System.out.println("Reading " + s);
+                        try{
+                            final String path = s;
+                            new Thread(){
+                                public void run(){
+                                    sendImage(path);
+                                }
+                            }.start();
+                        }
+                        catch(Exception e){
+                            System.out.println(e);
+                        }
+
+                    }
+                    textOutStream.println(s);
                     //end
                 }
+                // close pic streams too
                 //when closed == true
                 textOutStream.close();//close output stream
                 inputStream.close();//close input stream
@@ -157,8 +201,18 @@ public class ChatClient implements Runnable {
     */
 
     private static void sendImage(String path){
-        // send an image to the server
-        
+        try{
+            // send an image to the server
+            BufferedImage pic = ImageIO.read(new File(path));
+            ImageIO.write(pic, "jpg", bstream);
+            byte[] length = ByteBuffer.allocate(4).putInt(bstream.size()).array();
+            picOutStream.write(length);
+            picOutStream.write(bstream.toByteArray());
+            picOutStream.flush();
+        }
+        catch(Exception e){
+
+        }
     }
 
     private static void clear(){
@@ -172,5 +226,9 @@ public class ChatClient implements Runnable {
         System.out.print("\n|YOU> ");
         System.out.flush();
     }
+}
+
+class ImageReceiver extends Thread{
+
 }
 
