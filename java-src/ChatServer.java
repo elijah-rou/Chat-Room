@@ -284,35 +284,38 @@ class ImageHandler extends Thread{
 	
 	
 	public void run(){
+		System.out.println("Image Handler Started");
 		while(true){
 			//Socket socket = pictureSocket.accept();
 			//inputStream = socket.getInputStream();
 
 			for(Tuple<InputStream, Socket> k : clients){
 				if(k != null){
+					//System.out.println(k.getY().getRemoteSocketAddress().toString());
 					try{
 						//System.out.println("Attempting to write");
 						synchronized(this){
-							FileCacheImageInputStream in = new FileCacheImageInputStream(k.getX(), new File("cache/"));
-							//System.out.println("Reading: " + System.currentTimeMillis());
+							if(k.getX().available() != 0){
+								FileCacheImageInputStream in = new FileCacheImageInputStream(k.getX(), new File("cache/"));
+								
+								System.out.println("Reading: " + System.currentTimeMillis());
+								byte[] sizeAr = new byte[4];
+								in.read(sizeAr);
+								int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
+								System.out.println("Reading: " + System.currentTimeMillis());
+								byte[] imageAr = new byte[size];
+								in.read(imageAr);
+								BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
 
-							byte[] sizeAr = new byte[4];
-							in.read(sizeAr);
-							int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
-
-							byte[] imageAr = new byte[size];
-							in.read(imageAr);
-
-							BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
-
-							System.out.println("Received " + image.getHeight() + "x" + image.getWidth() + ": " + System.currentTimeMillis());
-							ImageIO.write(image, "jpg", new File("server-img/" + imgName));
-							in.flush();
-							in.close();
+								System.out.println("Received " + image.getHeight() + "x" + image.getWidth() + ": " + System.currentTimeMillis());
+								ImageIO.write(image, "jpg", new File("server-img/" + imgName));
+								in.flush();
+								in.close();
+							}
 						}
 					}
 					catch(Exception e){
-						System.out.println(e);
+						//System.out.println(e);
 					}
 				}
 			}
