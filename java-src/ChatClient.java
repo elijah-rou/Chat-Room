@@ -66,7 +66,6 @@ public class ChatClient implements Runnable {
             textOutStream = new PrintStream(outputStream);
 
             picOutStream = pictureSocket.getOutputStream();
-            bstream = new ByteArrayOutputStream();
             //opening input stream...
             inputStream = new DataInputStream(serverSocket.getInputStream());
             picInStream = new DataInputStream(pictureSocket.getInputStream());
@@ -206,6 +205,7 @@ public class ChatClient implements Runnable {
         try{
             // send an image to the server
             BufferedImage pic = ImageIO.read(new File(path));
+            bstream = new ByteArrayOutputStream();
             ImageIO.write(pic, "jpg", bstream);
             byte[] length = ByteBuffer.allocate(4).putInt(bstream.size()).array();
             picOutStream.write(length);
