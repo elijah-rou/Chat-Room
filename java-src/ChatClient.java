@@ -8,10 +8,17 @@ import java.io.PrintStream;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import javax.imageio.ImageWriter;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.IIOImage;
 import java.io.IOException;
+import javax.imageio.stream.FileCacheImageInputStream;
 import java.net.*;
+import javax.imageio.stream.ImageOutputStream;
+import java.util.Iterator;
 import java.nio.ByteBuffer;
 
 public class ChatClient implements Runnable {
@@ -29,6 +36,11 @@ public class ChatClient implements Runnable {
 
     private static BufferedReader inputLine = null;
     private static boolean closed = false;
+    private static ImageReceiver ir = null;
+
+    static void sendExitCode(){
+        textOutStream.println("#Exit");
+    }
 
     public static void main(String[] args){
 
@@ -64,11 +76,12 @@ public class ChatClient implements Runnable {
             */
             outputStream = serverSocket.getOutputStream();
             textOutStream = new PrintStream(outputStream);
-
             picOutStream = pictureSocket.getOutputStream();
             //opening input stream...
             inputStream = new DataInputStream(serverSocket.getInputStream());
             picInStream = new DataInputStream(pictureSocket.getInputStream());
+            ir = new ImageReceiver(picInStream);
+            ir.start();
 
         }
         catch(IOException e)
@@ -96,7 +109,7 @@ public class ChatClient implements Runnable {
                 */
                 Runtime.getRuntime().addShutdownHook(new Thread(){
                             public void run(){
-                                textOutStream.println("#Exit");
+                                ChatClient.sendExitCode();
                             }
                 });
                 // end
@@ -136,13 +149,18 @@ public class ChatClient implements Runnable {
                         s = "img/" + s;
                         System.out.println("Reading " + s);
                         try{
-                            final String path = s;
-                            textOutStream.println(s);
-                            new Thread(){
-                                public void run(){
-                                    sendImage(path);
-                                }
-                            }.start();
+                            final File path = new File(s);
+                            if(path.exists()){
+                                new Thread(){
+                                    public void run(){
+                                        sendImage(path);
+                                    }
+                                }.start();
+                                textOutStream.println("IMAGE: " + s);
+                            }
+                            else{
+                                System.out.println(s + " does not exist");
+                            }
                         }
                         catch(Exception e){
                             System.out.println(e);
@@ -150,14 +168,30 @@ public class ChatClient implements Runnable {
                         continue;
 
                     }
+                    else if(s.equals("#D")){
+                        System.out.println("Please specify a file to download from the server (#q to cancel)");
+                        s = inputLine.readLine().trim();
+                        if(s.equals("#q")){
+                            System.out.println("Image download cancelled");
+                            continue;
+                        } //Download code\
+                        ImageReceiver.imgName = s;
+                        textOutStream.println("D> " + s);
+                        continue;
+                    }
                     textOutStream.println(s);
                     //end
                 }
                 // close pic streams too
                 //when closed == true
                 textOutStream.close();//close output stream
+                picOutStream.close();
                 inputStream.close();//close input stream
+                picInStream.close();
                 serverSocket.close();//close the socket
+                pictureSocket.close();
+                ir.turnOff();
+                System.out.println("DISCONNECTED");
             }
             catch(IOException e)
             {
@@ -201,17 +235,35 @@ public class ChatClient implements Runnable {
     Eli Methods
     */
 
-    private static void sendImage(String path){
+    private static void sendImage(File path){
         try{
             // send an image to the server
-            BufferedImage pic = ImageIO.read(new File(path));
-            bstream = new ByteArrayOutputStream();
-            ImageIO.write(pic, "jpg", bstream);
-            byte[] length = ByteBuffer.allocate(4).putInt(bstream.size()).array();
-            picOutStream.write(length);
-            picOutStream.write(bstream.toByteArray());
-            picOutStream.flush();
-            System.out.println(path + " sent!");
+            // compress if image > 5MB
+            /*
+            if (path.getTotalSpace() > 5000000){
+                File input = new File("digital_image_processing.jpg");
+                BufferedImage pic = ImageIO.read(path);
+                Iterator<ImageWriter> i_writers =  ImageIO.getImageWritersByFormatName("jpg");
+                ImageWriter iW = (ImageWriter) i_writers.next();
+                ImageOutputStream ios = ImageIO.createImageOutputStream(picOutStream);
+                iW.setOutput(ios);
+                ImageWriteParam param = iW.getDefaultWriteParam();
+                param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                param.setCompressionQuality(0.5f);
+                iW.write(null, new IIOImage(pic, null, null), param);
+                iW.dispose();
+            }
+            */
+           // else{
+                BufferedImage pic = ImageIO.read(path);
+                bstream = new ByteArrayOutputStream();
+                ImageIO.write(pic, "jpg", bstream);
+                byte[] length = ByteBuffer.allocate(4).putInt(bstream.size()).array();
+                picOutStream.write(length);
+                picOutStream.write(bstream.toByteArray());
+                picOutStream.flush();
+                System.out.println(path + " sent!");
+           // }
         }
         catch(Exception e){
 
@@ -223,15 +275,46 @@ public class ChatClient implements Runnable {
         System.out.print("\033[H\033[2J");  
         System.out.flush();  
     }
-
-    private static void query(){
-        // query client for message
-        System.out.print("\n|YOU> ");
-        System.out.flush();
-    }
 }
 
 class ImageReceiver extends Thread{
+	private InputStream inStream = null;
+	static volatile String imgName = "default.jpg";
+    private boolean on = true;
 
+	public ImageReceiver(InputStream stream){
+		inStream = stream;
+	}
+
+    void turnOff(){
+        on = false;
+    }
+	
+	
+	public void run(){
+		//System.out.println("Image Receiver Started");
+		while(on){
+					try{
+							if(inStream.available() != 0){
+                                System.out.println("\033[3mReceiving " + imgName + " \033[0m");
+								FileCacheImageInputStream in = new FileCacheImageInputStream(inStream, new File("cache/"));
+								byte[] sizeAr = new byte[4];
+								in.read(sizeAr);
+								int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
+								byte[] imageAr = new byte[size];
+								in.read(imageAr);
+								BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
+
+								System.out.println("Received: " + imgName + " "
+                                 + image.getWidth() + "x" + image.getHeight() + "@ " + System.currentTimeMillis());
+								ImageIO.write(image, "jpg", new File("img/" + imgName));
+								in.flush();
+								in.close();
+							}
+						}
+					catch(Exception e){
+                        //System.out.println(e);
+					}
+		}
+	}
 }
-

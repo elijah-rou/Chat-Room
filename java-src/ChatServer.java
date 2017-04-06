@@ -56,7 +56,7 @@ public class ChatServer {
         System.out.flush();
 		System.out.println("Server started on " + serverSocket.getLocalSocketAddress().toString());
         //create a client socket for each connection & pass it to a new client thread
-		ImageHandler ih = new ImageHandler();
+		ih = new ImageHandler();
 		ih.start();
         while(true){
             try{
@@ -65,8 +65,8 @@ public class ChatServer {
                 int i=0;
                 for(i=0;i<maxNumClients;i++){
                     if(threads[i]==null) {
-						System.out.println("\nConnecting...");
-                        threads[i] = new clientThread(clientSocket, threads);
+						System.out.println("\nConnecting Client " + i + "...");
+                        threads[i] = new clientThread(clientSocket, threads, i);
 						System.out.println("Text Socket: " + clientSocket.getRemoteSocketAddress());
                         threads[i].start();
 						ih.addSocket(new Tuple<InputStream, Socket>(clientPicSocket.getInputStream(), clientPicSocket), i);
@@ -99,6 +99,7 @@ public class ChatServer {
 //it also broadcast the incoming messages to all clients
 //will inform chat room when the particular client leaves
 class clientThread extends Thread{
+	private int number = 0;
 	private String clientName = null;
 	private String address = null;
 	private DataInputStream inputStream = null;
@@ -107,10 +108,14 @@ class clientThread extends Thread{
 	private final clientThread[] threads;
 	private int maxNumClients;
 
-	public clientThread(Socket clientSocket,clientThread[] threads){
+	public clientThread(Socket clientSocket,clientThread[] threads, int num){
 		this.clientSocket = clientSocket;
 		this.threads = threads;
+		number = num;
 		maxNumClients = threads.length;
+	}
+	public int getNumber(){
+		return number;
 	}
 
 	public void run()
@@ -141,6 +146,7 @@ class clientThread extends Thread{
 			System.out.println(" connected as: " + name);
 			//welcome chat client to the room
 			outputStream.println("Welcome "+name+" to the chat room.\nTo leave type #Exit in a seperate line.\n");
+			outputStream.println("Commands: \n#P - Send pictue to server\n#D - Download picture from server\n");
 
 			synchronized(this)
 			{
@@ -202,6 +208,27 @@ class clientThread extends Thread{
 						this.outputStream.println("\033[1mNo message!\033[0;0m");
 					}
 				}
+				else if (line.startsWith("D>")){
+					synchronized (this){
+						String[] msg = line.split(" ", 2);
+						String path = "server-img/" + msg[1];
+						try{
+							File img = new File(path);
+							if(img.exists()){
+								//System.out.println(ChatServer.ih);
+								ChatServer.ih.sendImage(img, this.getNumber());
+								System.out.println(path + " sent to: " + ChatServer.ih.getAddress(this.getNumber()));
+								continue;
+							}
+							else{
+								this.outputStream.println("Image doesn't exist'");
+							}
+						}
+						catch(Exception e){
+							this.outputStream.println(e);
+						}
+					}
+				}
 				else {
 					synchronized (this) {
 						//System.out.println(line.substring(4));
@@ -242,8 +269,8 @@ class clientThread extends Thread{
 				{
 					if(threads[i]==this)
 					{
-						threads[i]=null;
 						ChatServer.ih.removeSocket(i);
+						threads[i]=null;
 					}
 				}
 			}
@@ -262,11 +289,8 @@ class clientThread extends Thread{
 }
 
 class ImageHandler extends Thread{
-	private InputStream inputStream = null;
-	private OutputStream outputStream = null;
 	private Tuple<InputStream, Socket>[] clients = null;
 	static volatile String imgName = "default.jpg";
-
 
 	public ImageHandler(){
 		clients = new Tuple[ChatServer.maxNumClients];
@@ -280,6 +304,34 @@ class ImageHandler extends Thread{
 
 	public void removeSocket(int arrayPos){
 		clients[arrayPos] = null;
+	}
+
+	public Socket getSocket(int index) throws IOException{
+		return clients[index].y;
+	}
+
+	public String getAddress(int index) throws IOException{
+		return clients[index].y.getRemoteSocketAddress().toString();
+	}
+
+	public void sendImage(File img, int threadIndex) {
+		try {
+			// send an image to the server
+			System.out.print("Attempting to send image: " + img.getName());
+			Socket s = getSocket(threadIndex);
+			System.out.println(" to " + s.getRemoteSocketAddress());
+			OutputStream outStream = s.getOutputStream();
+			BufferedImage pic = ImageIO.read(img);
+			ByteArrayOutputStream bstream = new ByteArrayOutputStream();
+			ImageIO.write(pic, "jpg", bstream);
+			byte[] length = ByteBuffer.allocate(4).putInt(bstream.size()).array();
+			outStream.write(length);
+			outStream.write(bstream.toByteArray());
+			outStream.flush();
+		} 
+		catch (Exception e) {
+			System.out.println("Send Image Error: " + e);
+		}
 	}
 	
 	
