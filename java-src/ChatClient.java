@@ -150,13 +150,13 @@ public class ChatClient implements Runnable {
                         System.out.println("Reading " + s);
                         try{
                             final File path = new File(s);
+                            textOutStream.println(s);
                             if(path.exists()){
                                 new Thread(){
                                     public void run(){
                                         sendImage(path);
                                     }
                                 }.start();
-                                textOutStream.println("IMAGE: " + s);
                             }
                             else{
                                 System.out.println(s + " does not exist");
