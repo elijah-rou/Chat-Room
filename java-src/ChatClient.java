@@ -139,14 +139,14 @@ public class ChatClient implements Runnable {
                     }
                     // user wants to send a picture
                     else if (s.equals("#P")){
-                        System.out.println("Please specify a file to send (in the img/ folder, #q to cancel)");
+                        System.out.println("\033[36mPlease specify a file to send (in the img/ folder, #q to cancel)\033[0m");
                         s = inputLine.readLine().trim();
                         if(s.equals("#q")){
-                            System.out.println("Image transfer cancelled");
+                            System.out.println("\033[36mImage transfer cancelled\033[0m");
                             continue;
                         }
                         s = "img/" + s;
-                        System.out.println("Reading " + s);
+                        System.out.println("\033[36mReading " + s + "\033[0m");
                         try{
                             final File path = new File(s);
                             textOutStream.println(s);
@@ -158,7 +158,7 @@ public class ChatClient implements Runnable {
                                 }.start();
                             }
                             else{
-                                System.out.println(s + " does not exist");
+                                System.out.println("\033[36m" + s + " does not exist\033[0m");
                             }
                         }
                         catch(Exception e){
@@ -168,10 +168,10 @@ public class ChatClient implements Runnable {
 
                     }
                     else if(s.equals("#D")){
-                        System.out.println("Please specify a file to download from the server (#q to cancel)");
+                        System.out.println("\033[35mPlease specify a file to download from the server (#q to cancel)\033[0m");
                         s = inputLine.readLine().trim();
                         if(s.equals("#q")){
-                            System.out.println("Image download cancelled");
+                            System.out.println("\033[35mImage download cancelled\033[0m");
                             continue;
                         } //Download code\
                         ImageReceiver.imgName = s;
@@ -182,14 +182,14 @@ public class ChatClient implements Runnable {
                     //end
                 }
                 // close pic streams too
-                //when closed == true
+                // unexpected shutdown from server
+                ir.turnOff();
                 textOutStream.close();//close output stream
                 picOutStream.close();
                 inputStream.close();//close input stream
                 picInStream.close();
                 serverSocket.close();//close the socket
                 pictureSocket.close();
-                ir.turnOff();
                 System.out.println("DISCONNECTED");
             }
             catch(IOException e)
@@ -257,7 +257,7 @@ public class ChatClient implements Runnable {
             */
             
            //else{
-                System.out.println("Compressing...");
+                System.out.println("\033[36mCompressing...\033[0m");
                 BufferedImage pic = ImageIO.read(path);
                 bstream = new ByteArrayOutputStream();
                 ImageIO.write(pic, "jpg", bstream);
@@ -265,7 +265,7 @@ public class ChatClient implements Runnable {
                 picOutStream.write(length);
                 picOutStream.write(bstream.toByteArray());
                 picOutStream.flush();
-                System.out.println(path + " sent!");
+                System.out.println("\033[36m"+ path + " sent!\033[0m");
           // }
         }
         catch(Exception e){
@@ -299,7 +299,7 @@ class ImageReceiver extends Thread{
 		while(on){
 					try{
 							if(inStream.available() != 0){
-                                System.out.println("\033[3mReceiving " + imgName + " \033[0m");
+                                System.out.println("\033[35mReceiving " + imgName + " \033[0m");
 								FileCacheImageInputStream in = new FileCacheImageInputStream(inStream, new File("cache/"));
 								byte[] sizeAr = new byte[4];
 								in.read(sizeAr);
@@ -308,8 +308,8 @@ class ImageReceiver extends Thread{
 								in.read(imageAr);
 								BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
 
-								System.out.println("Received: " + imgName + " "
-                                 + image.getWidth() + "x" + image.getHeight() + "@ " + System.currentTimeMillis());
+								System.out.println("\033[35mReceived: " + imgName + " "
+                                 + image.getWidth() + "x" + image.getHeight() + "@ " + System.currentTimeMillis() + "\033[0m");
 								ImageIO.write(image, "jpg", new File("img/" + imgName));
 								in.flush();
 								in.close();

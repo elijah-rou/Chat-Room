@@ -123,7 +123,7 @@ class clientThread extends Thread{
 		
 		int maxNumClients = this.maxNumClients;
 		clientThread[] threads = this.threads;
-
+		int threadNumber = this.number;
 		try{
 
 			//create input stream for this client
@@ -143,11 +143,11 @@ class clientThread extends Thread{
 			name = name + "<" + num.toString().substring(3) + ">";
 			// added client name here
 
-			clientName = "@"+name;
+			clientName = "@" + name;
 			System.out.print(address);
 			System.out.println(" connected as: " + name);
 			//welcome chat client to the room
-			outputStream.println("Welcome "+name+" to the chat room.\nTo leave type #Exit in a seperate line.\n");
+			outputStream.println("Welcome " + name + " to the chat room.\nTo leave type #Exit in a seperate line.\n");
 			outputStream.println("Commands: \n#P - Send pictue to server\n#D - Download picture from server\n");
 
 			synchronized(this)
@@ -168,7 +168,7 @@ class clientThread extends Thread{
 				{
 					if(threads[i]!=null && threads[i]!=this && threads[i].clientName !=null)
 					{
-						threads[i].outputStream.println("--- "+name+" entered the chat room. ---");
+						threads[i].outputStream.println("\033[33;1m--- "+name+" entered the chat room. ---\033[0m");
 					}
 				}
 			}//sync
@@ -179,6 +179,7 @@ class clientThread extends Thread{
 				String line=inputStream.readLine();
 				if(line.startsWith("#Exit"))
 				{
+					System.out.println("Client " + threadNumber + " '" + name + "' left.");
 					break;
 				}
 				//broadcast message to the chatroom
@@ -223,7 +224,7 @@ class clientThread extends Thread{
 								continue;
 							}
 							else{
-								this.outputStream.println("Image doesn't exist on server!");
+								this.outputStream.println("\033[35mImage doesn't exist on server!\033[0m");
 							}
 						}
 						catch(Exception e){
@@ -240,14 +241,14 @@ class clientThread extends Thread{
 						(line.substring(line.length()-4).equals(".jpg") || line.substring(line.length()-4).equals(".png"))){
 							line = line.substring(4);
 							ImageHandler.imgName = line;
-							line = "uploaded \033[3m" + line + " \033[0m" ;
+							line = "\033[30;47muploaded \033[3m" + line + " \033[0m" ;
 						}
 						// entension is jpeg?
 						else if(line.length() > 8 && line.substring(0, 4).equals("img/") && 
 								line.substring(line.length()-5).equals(".jpeg")){
 							line = line.substring(4);
 							ImageHandler.imgName = line;
-							line = "uploaded \033[3m" + line + " \033[0m" ;
+							line = "\033[30;47muploaded \033[3m" + line + " \033[0m";
 						}
 						//System.out.println(ImageHandler.imgName);
 						System.out.println(
@@ -255,7 +256,7 @@ class clientThread extends Thread{
 						for (int i = 0; i < maxNumClients; i++) {
 							if (threads[i] != null && threads[i].clientName != null
 									&& !(threads[i].clientName.equals("@" + name))) {
-								threads[i].outputStream.println(name + ": " + line);
+								threads[i].outputStream.println("\033[31;1m" + name + "\033[0m:" + line);
 							}
 						}
 					}
@@ -268,11 +269,11 @@ class clientThread extends Thread{
 				{
 					if(threads[i]!=null && threads[i]!= this && threads[i].clientName !=null)
 					{
-						threads[i].outputStream.println("--- "+name+" has left the chat room.---");
+						threads[i].outputStream.println("\033[33;1m--- "+name+" has left the chat room.---\033[0m");
 					}
 				}
 			}
-			outputStream.println("--- Goodbye "+name+" ---");
+			outputStream.println("--- Goodbye "+name.substring(0, name.length()-4)+" ---");
 
 			//set current thread to null so new client can be accepted by server
 			synchronized(this)
@@ -293,9 +294,14 @@ class clientThread extends Thread{
 			outputStream.close();
 			//close the socket
 			clientSocket.close();
-		}catch(IOException e)
-		{
-		System.out.println(e);
+		}
+		catch(IOException e){
+			System.out.println(e);
+		}
+		catch(NullPointerException n){
+			System.out.println("Client " + threadNumber +  " Dropped");
+			ChatServer.ih.removeSocket(threadNumber);
+			threads[threadNumber]=null;
 		}
 	}
 }
@@ -371,7 +377,7 @@ class ImageHandler extends Thread{
 								in.read(imageAr);
 								BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
 
-								System.out.println("Received " + image.getHeight() + "x" + image.getWidth() + ": " + System.currentTimeMillis());
+								System.out.println("Received " + image.getHeight() + "x" + image.getWidth() + ": from " + k.y.getRemoteSocketAddress());
 								ImageIO.write(image, "jpg", new File("server-img/" + imgName));
 								in.flush();
 								in.close();
