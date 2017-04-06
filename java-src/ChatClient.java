@@ -51,8 +51,19 @@ public class ChatClient implements Runnable {
         int port = 5000;
         int picPort = 5001;
         //default host
-        String hostname="localhost";
-
+        String hostname = "localhost";
+        System.out.println("Please specify a host name... (blank for localhost)");
+        try{
+            inputLine = new BufferedReader(new InputStreamReader(System.in));
+            hostname = inputLine.readLine().trim();
+            if(hostname.equals("")){
+                hostname = "localhost";
+            }
+        }
+        catch(Exception e){
+            System.out.println(e);
+            System.exit(1);
+        }
         //if port and hostname supplied
         if(args.length == 2)
         {
@@ -64,10 +75,9 @@ public class ChatClient implements Runnable {
         //open input and output stream
         try{
             //creating socket...
+            System.out.println("Connecting to " + hostname);
             serverSocket = new Socket(hostname, port);
             pictureSocket = new Socket(hostname, picPort);
-
-            inputLine = new BufferedReader(new InputStreamReader(System.in));
             //opening output stream...
             /*
             ELI
