@@ -137,8 +137,10 @@ class clientThread extends Thread{
 			name = inputStream.readLine().trim();
 			address = clientSocket.getRemoteSocketAddress().toString();
 
-			// TEMPORARILY TAKEN OUT
-			//name = name + "<" + address.substring(1,4) + ":" + clientSocket.getPort() + ">";
+			// name is given an identifier based on the 
+			// last 2 numbers of the port it's connected to
+			Integer num = clientSocket.getPort();
+			name = name + "<" + num.toString().substring(3) + ">";
 			// added client name here
 
 			clientName = "@"+name;
