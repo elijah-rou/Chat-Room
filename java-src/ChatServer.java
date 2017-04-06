@@ -223,7 +223,7 @@ class clientThread extends Thread{
 								continue;
 							}
 							else{
-								this.outputStream.println("Image doesn't exist'");
+								this.outputStream.println("Image doesn't exist on server!");
 							}
 						}
 						catch(Exception e){
@@ -235,9 +235,19 @@ class clientThread extends Thread{
 					synchronized (this) {
 						//System.out.println(line.substring(4));
 						//System.out.println(line.substring(line.length()-4));
-						if(line.length() > 7 && line.substring(0, 4).equals("img/") && line.substring(line.length()-4).equals(".jpg")){
+						// Check is it an image?
+						if(line.length() > 7 && line.substring(0, 4).equals("img/") && 
+						(line.substring(line.length()-4).equals(".jpg") || line.substring(line.length()-4).equals(".png"))){
 							line = line.substring(4);
 							ImageHandler.imgName = line;
+							line = "uploaded \033[3m" + line + " \033[0m" ;
+						}
+						// entension is jpeg?
+						else if(line.length() > 8 && line.substring(0, 4).equals("img/") && 
+								line.substring(line.length()-5).equals(".jpeg")){
+							line = line.substring(4);
+							ImageHandler.imgName = line;
+							line = "uploaded \033[3m" + line + " \033[0m" ;
 						}
 						//System.out.println(ImageHandler.imgName);
 						System.out.println(

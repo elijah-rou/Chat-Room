@@ -100,7 +100,6 @@ public class ChatClient implements Runnable {
                 System.out.println("\nConnected to " + hostname + ":" + port + " as " + s + "\n");
                 new Thread(new ChatClient()).start();
                 // sepearate thread for receiving images
-                //new Thread(new ImageReceiver()).start();
 
                 /*
                 ELI
@@ -238,9 +237,11 @@ public class ChatClient implements Runnable {
     private static void sendImage(File path){
         try{
             // send an image to the server
-            // compress if image > 5MB
+            // compress if image > 1MB
             /*
-            if (path.getTotalSpace() > 5000000){
+            double size = path.length()/1024/1024;
+            if (size > 1){
+                System.out.println("Compressing...");
                 File input = new File("digital_image_processing.jpg");
                 BufferedImage pic = ImageIO.read(path);
                 Iterator<ImageWriter> i_writers =  ImageIO.getImageWritersByFormatName("jpg");
@@ -254,7 +255,9 @@ public class ChatClient implements Runnable {
                 iW.dispose();
             }
             */
-           // else{
+            
+           //else{
+                System.out.println("Compressing...");
                 BufferedImage pic = ImageIO.read(path);
                 bstream = new ByteArrayOutputStream();
                 ImageIO.write(pic, "jpg", bstream);
@@ -263,7 +266,7 @@ public class ChatClient implements Runnable {
                 picOutStream.write(bstream.toByteArray());
                 picOutStream.flush();
                 System.out.println(path + " sent!");
-           // }
+          // }
         }
         catch(Exception e){
 
