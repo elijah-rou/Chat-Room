@@ -79,17 +79,14 @@ public class ChatClient implements Runnable {
             serverSocket = new Socket(hostname, port);
             pictureSocket = new Socket(hostname, picPort);
             //opening output stream...
-            /*
-            ELI
-            Seperated output and input streams into seperate
-            objects order to be able to send pictures
-            */
             outputStream = serverSocket.getOutputStream();
             textOutStream = new PrintStream(outputStream);
             picOutStream = pictureSocket.getOutputStream();
             //opening input stream...
             inputStream = new DataInputStream(serverSocket.getInputStream());
             picInStream = new DataInputStream(pictureSocket.getInputStream());
+
+            // start thread to recieve images
             ir = new ImageReceiver(picInStream);
             ir.start();
 
@@ -108,11 +105,10 @@ public class ChatClient implements Runnable {
                 String s = inputLine.readLine().trim();
                 clear();
                 System.out.println("\nConnected to " + hostname + ":" + port + " as " + s + "\n");
+                
+                // thread to recieve text
                 new Thread(new ChatClient()).start();
-                // sepearate thread for receiving images
-
                 /*
-                ELI
                 Added a shutdown hook to send server notice of termination
                 if forced closed
                 */
@@ -121,27 +117,11 @@ public class ChatClient implements Runnable {
                                 ChatClient.sendExitCode();
                             }
                 });
-                // end
-
-                /*
-                ELI
-                Made more neat by clearing screen 
-                after user enters name
-                */
+                
                 textOutStream.println(s);
                 while(!closed){
-                    /*
-                    ELI
-                    Added check here to remove reliance on server
-                    to quit
-                    */
-                    //query();
                     s = inputLine.readLine().trim();
 
-                    // want to clear screen here
-                    //System.out.print("\033[H\033[2J");  
-                    //System.out.flush();  
-                    
                     if (s.equals("#Exit")) {
                         clear();
                         textOutStream.println(s);
@@ -177,6 +157,7 @@ public class ChatClient implements Runnable {
                         continue;
 
                     }
+                    // user wants to download picture
                     else if(s.equals("#D")){
                         System.out.println("\033[35mPlease specify a file to download from the server (#q to cancel)\033[0m");
                         s = inputLine.readLine().trim();
@@ -189,7 +170,6 @@ public class ChatClient implements Runnable {
                         continue;
                     }
                     textOutStream.println(s);
-                    //end
                 }
                 // close pic streams too
                 // unexpected shutdown from server
@@ -212,25 +192,10 @@ public class ChatClient implements Runnable {
     //creating thread that will read from the server
     public void run()
     {   
-        /* REDONE
-        //want to keep reading from the socket until the greeting message from the server is received
-        //once the greeting message received, want to end.
-           REDONE
-        */
         String reply;
         try{
             while((reply=inputStream.readLine()) != null){
                 System.out.println(reply);
-                /*
-                ELI
-                Unadvised to do this, need to remove reliance on server for 
-                termination
-                
-                if(reply.contains("# Goodbye"))
-                {
-                    break;
-                }
-                */
             }
             closed = true;
         }
@@ -240,43 +205,20 @@ public class ChatClient implements Runnable {
         }
     }
 
-    /*
-    Eli Methods
-    */
-
+// function that sends an image to the connected server
+// also compresses the image
     private static void sendImage(File path){
-        try{
-            // send an image to the server
-            // compress if image > 1MB
-            /*
-            double size = path.length()/1024/1024;
-            if (size > 1){
-                System.out.println("Compressing...");
-                File input = new File("digital_image_processing.jpg");
-                BufferedImage pic = ImageIO.read(path);
-                Iterator<ImageWriter> i_writers =  ImageIO.getImageWritersByFormatName("jpg");
-                ImageWriter iW = (ImageWriter) i_writers.next();
-                ImageOutputStream ios = ImageIO.createImageOutputStream(picOutStream);
-                iW.setOutput(ios);
-                ImageWriteParam param = iW.getDefaultWriteParam();
-                param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                param.setCompressionQuality(0.5f);
-                iW.write(null, new IIOImage(pic, null, null), param);
-                iW.dispose();
-            }
-            */
-            
-           //else{
-                System.out.println("\033[36mCompressing...\033[0m");
-                BufferedImage pic = ImageIO.read(path);
-                bstream = new ByteArrayOutputStream();
-                ImageIO.write(pic, "jpg", bstream);
-                byte[] length = ByteBuffer.allocate(4).putInt(bstream.size()).array();
-                picOutStream.write(length);
-                picOutStream.write(bstream.toByteArray());
-                picOutStream.flush();
-                System.out.println("\033[36m"+ path + " sent!\033[0m");
-          // }
+        try {
+            System.out.println("\033[36mCompressing...\033[0m");
+            BufferedImage pic = ImageIO.read(path);
+            bstream = new ByteArrayOutputStream();
+            ImageIO.write(pic, "jpg", bstream);
+            byte[] length = ByteBuffer.allocate(4).putInt(bstream.size()).array();
+            picOutStream.write(length);
+            picOutStream.write(bstream.toByteArray());
+            picOutStream.flush();
+            System.out.println("\033[36m" + path + " sent!\033[0m");
+
         }
         catch(Exception e){
 
@@ -290,6 +232,7 @@ public class ChatClient implements Runnable {
     }
 }
 
+// thread for listening for incoming image uploads
 class ImageReceiver extends Thread{
 	private InputStream inStream = null;
 	static volatile String imgName = "default.jpg";
@@ -305,29 +248,26 @@ class ImageReceiver extends Thread{
 	
 	
 	public void run(){
-		//System.out.println("Image Receiver Started");
-		while(on){
-					try{
-							if(inStream.available() != 0){
-                                System.out.println("\033[35mReceiving " + imgName + " \033[0m");
-								FileCacheImageInputStream in = new FileCacheImageInputStream(inStream, new File("cache/"));
-								byte[] sizeAr = new byte[4];
-								in.read(sizeAr);
-								int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
-								byte[] imageAr = new byte[size];
-								in.read(imageAr);
-								BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
+		while (on) {
+            try {
+                if (inStream.available() != 0) {
+                    System.out.println("\033[35mReceiving " + imgName + " \033[0m");
+                    FileCacheImageInputStream in = new FileCacheImageInputStream(inStream, new File("cache/"));
+                    byte[] sizeAr = new byte[4];
+                    in.read(sizeAr);
+                    int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
+                    byte[] imageAr = new byte[size];
+                    in.read(imageAr);
+                    BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
 
-								System.out.println("\033[35mReceived: " + imgName + " "
-                                 + image.getWidth() + "x" + image.getHeight() + "@ " + System.currentTimeMillis() + "\033[0m");
-								ImageIO.write(image, "jpg", new File("img/" + imgName));
-								in.flush();
-								in.close();
-							}
-						}
-					catch(Exception e){
-                        //System.out.println(e);
-					}
-		}
+                    System.out.println("\033[35mReceived: " + imgName + " " + image.getWidth() + "x" + image.getHeight()
+                            + "@ " + System.currentTimeMillis() + "\033[0m");
+                    ImageIO.write(image, "jpg", new File("img/" + imgName));
+                    in.flush();
+                    in.close();
+                }
+            } catch (Exception e) {
+            }
+        }
 	}
 }

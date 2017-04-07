@@ -1,3 +1,5 @@
+Hi there! :)
+
 To run go to the respective exe folders and run the jars
 
-Alternatively, use make java-server or make java-client
+Alternatively, use make java-server or make java-client in the project folder

@@ -31,15 +31,8 @@ public class ChatServer {
 
 	static ImageHandler ih = null;
 
-
-
     public static void main(String[] args){
         //default port number
-
-		/*
-		ELI
-		changed port number to accomodate server
-		*/
         int port = 5000;
 		int picPort = 5001;
 
@@ -132,7 +125,6 @@ class clientThread extends Thread{
 			outputStream = new PrintStream(clientSocket.getOutputStream());
 			String name;
 			//promt chat client for his/her name
-			//REMOVED //outputStream.println("Enter your name:");
 			//assign the name
 			name = inputStream.readLine().trim();
 			address = clientSocket.getRemoteSocketAddress().toString();
@@ -141,8 +133,8 @@ class clientThread extends Thread{
 			// last 2 numbers of the port it's connected to
 			Integer num = clientSocket.getPort();
 			name = name + "<" + num.toString().substring(3) + ">";
-			// added client name here
 
+			// added client name here
 			clientName = "@" + name;
 			System.out.print(address);
 			System.out.println(" connected as: " + name);
@@ -152,18 +144,6 @@ class clientThread extends Thread{
 
 			synchronized(this)
 			{
-				// not needed
-				/*
-				for(int i=0;i<maxNumClients;i++)
-				{
-					if(threads[i]!=null && threads[i]==this)
-					{
-						//name to be displayed as in room
-						clientName = "@"+name;
-						break;
-					}
-				}
-				*/
 				for(int i=0;i<maxNumClients;i++)
 				{
 					if(threads[i]!=null && threads[i]!=this && threads[i].clientName !=null)
@@ -211,6 +191,7 @@ class clientThread extends Thread{
 						this.outputStream.println("\033[1mNo message!\033[0;0m");
 					}
 				}
+				// user has requested a download
 				else if (line.startsWith("D>")){
 					synchronized (this){
 						String[] msg = line.split(" ", 2);
@@ -218,7 +199,6 @@ class clientThread extends Thread{
 						try{
 							File img = new File(path);
 							if(img.exists()){
-								//System.out.println(ChatServer.ih);
 								ChatServer.ih.sendImage(img, this.getNumber());
 								System.out.println(path + " sent to: " + ChatServer.ih.getAddress(this.getNumber()));
 								continue;
@@ -234,9 +214,8 @@ class clientThread extends Thread{
 				}
 				else {
 					synchronized (this) {
-						//System.out.println(line.substring(4));
-						//System.out.println(line.substring(line.length()-4));
-						// Check is it an image?
+						//an image?
+						// Check is it a jpg or png?
 						if(line.length() > 7 && line.substring(0, 4).equals("img/") && 
 						(line.substring(line.length()-4).equals(".jpg") || line.substring(line.length()-4).equals(".png"))){
 							line = line.substring(4);
@@ -250,7 +229,7 @@ class clientThread extends Thread{
 							ImageHandler.imgName = line;
 							line = "\033[30;47muploaded \033[3m" + line + " \033[0m";
 						}
-						//System.out.println(ImageHandler.imgName);
+						// normal text
 						System.out.println(
 								"Broadcast: " + line + ", From: " + name + "@" + clientSocket.getRemoteSocketAddress());
 						for (int i = 0; i < maxNumClients; i++) {
@@ -306,6 +285,7 @@ class clientThread extends Thread{
 	}
 }
 
+// a seperate thread that listens for incoming uploads/sends images
 class ImageHandler extends Thread{
 	private Tuple<InputStream, Socket>[] clients = null;
 	static volatile String imgName = "default.jpg";
@@ -316,7 +296,7 @@ class ImageHandler extends Thread{
 	}
 
 	public void addSocket(Tuple<InputStream, Socket> s, int arrayPos){
-		System.out.println("Media Socket: " + s.getY().getRemoteSocketAddress() + "\n");
+		System.out.println("Media Socket: " + s.y.getRemoteSocketAddress() + "\n");
 		clients[arrayPos] = s;
 	}
 
@@ -356,17 +336,12 @@ class ImageHandler extends Thread{
 	public void run(){
 		System.out.println("Image Handler Started");
 		while(true){
-			//Socket socket = pictureSocket.accept();
-			//inputStream = socket.getInputStream();
-
 			for(Tuple<InputStream, Socket> k : clients){
 				if(k != null){
-					//System.out.println(k.getY().getRemoteSocketAddress().toString());
 					try{
-						//System.out.println("Attempting to write");
 						synchronized(this){
-							if(k.getX().available() != 0){
-								FileCacheImageInputStream in = new FileCacheImageInputStream(k.getX(), new File("cache/"));
+							if(k.x.available() != 0){
+								FileCacheImageInputStream in = new FileCacheImageInputStream(k.x, new File("cache/"));
 								
 								System.out.println("Reading: " + System.currentTimeMillis());
 								byte[] sizeAr = new byte[4];
@@ -385,7 +360,6 @@ class ImageHandler extends Thread{
 						}
 					}
 					catch(Exception e){
-						//System.out.println(e);
 					}
 				}
 			}
